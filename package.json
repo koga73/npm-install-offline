@@ -1,6 +1,6 @@
 {
   "name": "npm-install-offline",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Installs node_modules from an offline copy or local repository",
   "main": "npm-install-offline.js",
   "bin": {
@@ -17,7 +17,9 @@
     "npm",
     "install",
     "local",
-    "repo"
+    "repo",
+    "offline"
+    "dependencies"
   ],
   "author": "AJ Savino",
   "license": "MIT",
