@@ -1,0 +1,31 @@
+{
+  "name": "npm-install-offline",
+  "version": "1.0.0",
+  "description": "Installs node_modules from an offline copy or local repository",
+  "main": "npm-install-offline.js",
+  "bin": {
+    "npm-install-offline": "./bin/index.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/koga73/npm-install-offline.git"
+  },
+  "keywords": [
+    "npm",
+    "install",
+    "local",
+    "repo"
+  ],
+  "author": "AJ Savino",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/koga73/npm-install-offline/issues"
+  },
+  "homepage": "https://github.com/koga73/npm-install-offline#readme",
+  "dependencies": {
+    "fs-extra": "^8.1.0"
+  }
+}
