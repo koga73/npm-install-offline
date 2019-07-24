@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+require("../utils/log");
 const NpmInstallOffline = require("../npm-install-offline");
 
 var args = process.argv.splice(2);
@@ -78,8 +79,9 @@ async function install(options){
 	var packages = options.packageOrDirs.map((packageOrDir) => npmInstallOffline.resolvePackage(packageOrDir));
 	await npmInstallOffline.install(packages);
 
-	console.log("");
 	console.log("COMPLETE!");
+	console.log("");
+	console.warn("Note: There is a bug with npm (including v6.10.2) where if you run npm install it will uninstall packages not contained in package.json. This means if you use this tool to install local packages and then run npm install afterwards the local packages will get removed from your node_modules directory");
 }
 
 function showCommands(){
