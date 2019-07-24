@@ -24,3 +24,6 @@ npm-install-offline my-npm-package --repo ./my-offline-npm
 - ```npm-install-offline packageName --repo repoDirectory```
 - ```npm-install-offline packageName1 packageName2 packageDirectory1 --repo repoDirectory1 repoDirectory2```
 - ```npm-install-offline [package] [--repo folder] [--production] [--local-only] [--symlink] [--verbose]```
+
+#### Known issues
+- There is a bug with npm (including v6.10.2) where if you run npm install it will uninstall packages not contained in package.json. This means if you use this tool to install local packages and then run npm install afterwards the local packages will get removed from your node_modules directory
