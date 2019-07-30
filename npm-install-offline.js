@@ -1,13 +1,15 @@
 /*
-* npm-install-offline v1.1.0 Copyright (c) 2019 AJ Savino
+* npm-install-offline v1.2.0 Copyright (c) 2019 AJ Savino
 * https://github.com/koga73/npm-install-offline
 * MIT LICENSE
 */
 const fs = require("fs-extra");
+const path = require("path");
 const crypto = require("crypto");
-const {exec, execSync} = require("child_process");
+const {execSync} = require("child_process");
 
 const ERROR_INVALID_PARAM = "Invalid parameter - Must specify an [ npm directory | packageName + --repo directory ]";
+const CWD_PATH = path.resolve(process.cwd());
 
 class NpmInstallOffline {
 	constructor(repoPaths){
@@ -35,7 +37,7 @@ class NpmInstallOffline {
 		if (lStatDir){
 			if (lStatDir.isDirectory()){
 				var dir = packageNameOrDir.replace(/[\/\\]$/, "");
-				var pkgDotJson = dir + "/package.json";
+				var pkgDotJson = path.join(dir, "package.json");
 				try {
 					fs.statSync(pkgDotJson);
 				} catch (err){
@@ -57,19 +59,20 @@ class NpmInstallOffline {
 		}
 		return packageNameOrDir;
 	}
-	
+
 	addRepo(repoPath){
-		this.repoPaths.push(repoPath);
-		this.repoPaths = this._filterDuplicates(this.repoPaths);
 		var isDir = fs.lstatSync(repoPath).isDirectory();
 		if (!isDir){
 			throw new Error(ERROR_INVALID_PARAM);
 		}
+		repoPath = path.resolve(repoPath);
+		this.repoPaths.push(repoPath);
+		this.repoPaths = this._filterDuplicates(this.repoPaths);
 		if (this.verbose){
 			console.log("Repo added:", repoPath);
 		}
 	}
-	
+
 	//Install packages from local repositories and npm if not --local-only
 	//packageNames can be a string or array
 	//Returns an object containing the found and missing packages
@@ -82,14 +85,15 @@ class NpmInstallOffline {
 		}
 
 		//Create node_modules directory
-		if (!fs.existsSync("./node_modules")){
-			fs.mkdirSync("./node_modules");
+		var nodeModulesDir = path.resolve("./node_modules");
+		if (!fs.existsSync(nodeModulesDir)){
+			fs.mkdirSync(nodeModulesDir);
 		}
 
 		//Gather packages and filter duplicates
 		var pkgs = this._gatherPackages(packageNames);
-		pkgs.found = this._filterDuplicates(pkgs.found);
-		pkgs.missing = this._filterDuplicates(pkgs.missing);
+		pkgs.found = this._filterDuplicates(pkgs.found).sort((a, b) => a.name < b.name ? -1 : 1);
+		pkgs.missing = this._filterDuplicates(pkgs.missing).sort();
 		console.info("Packages needed for install found in local repos:", pkgs.found.reduce((str, pkg) => str + pkg.name + "\n", "\n"));
 		console.warn("Packages needed for install missing from local repos:", pkgs.missing.reduce((str, pkg) => str + pkg + "\n", "\n"));
 
@@ -110,8 +114,8 @@ class NpmInstallOffline {
 		pkgs.found.forEach((pkg) => {
 			//TODO: Add force flag to overwrite if exists?
 			var packageName = pkg.name;
-			var dst = "./node_modules/" + packageName;
-			if (!fs.existsSync(dst)){
+			var dst = path.join(nodeModulesDir, packageName);
+			if (!fs.existsSync(dst) && pkg.fullPath != CWD_PATH){
 				console.log("Installing package:", packageName);
 				if (symlink){
 					fs.ensureSymlinkSync(pkg.fullPath, dst);
@@ -131,7 +135,7 @@ class NpmInstallOffline {
 
 		return Promise.resolve(pkgs);
 	}
-	
+
 	//Build a cache of packages found in repos
 	async buildCache(){
 		var repos = this.repoPaths;
@@ -149,10 +153,11 @@ class NpmInstallOffline {
 		var promises = repos.map((repo) => {
 			return this._buildCache_enumerateDirectory(this.cache, repo);
 		});
-		await Promise.all(promises);
-		return Promise.resolve(true);
+		return Promise.all(promises).then(() => {
+			return Promise.resolve(true);
+		});
 	}
-	
+
 	//Search for packages in a directory and add them to cache
 	_buildCache_enumerateDirectory(cache, dir, indent){
 		indent = indent || "";
@@ -170,7 +175,7 @@ class NpmInstallOffline {
 				var listLen = list.length;
 				for (var i = 0; i < listLen; i++){
 					var name = list[i];
-					var fullPath = dir + '/' + name;
+					var fullPath = path.join(dir, name);
 					try {
 						var stat = fs.lstatSync(fullPath);
 						if (stat.isDirectory()){
@@ -211,42 +216,45 @@ class NpmInstallOffline {
 			});
 		});
 	}
-	
+
 	//Checks if packageNames are in cache and finds dependencies
 	//packageNames can be a string or array
 	//Returns an object containing the found and missing packages
-	_gatherPackages(packageNames){
+	_gatherPackages(packageNames, packages){
 		var pkgs = [];
 		if (this._isArray(packageNames)){
 			pkgs = packageNames;
 		} else {
 			pkgs.push(packageNames);
 		}
-		var packages = {
+		packages = packages || {
 			found:[],
 			missing:[]
 		};
+
 		var pkgsLen = pkgs.length;
 		for (var i = 0; i < pkgsLen; i++){
 			var packageName = pkgs[i];
 			var pkg = this.cache[packageName];
 			if (pkg){
-				packages.found.push(pkg);
-				var dependencies = Object.keys(pkg.dependencies);
-				if (!this.production){
-					dependencies = dependencies.concat(Object.keys(pkg.devDependencies));
+				if (packages.found.indexOf(pkg) == -1){
+					packages.found.push(pkg);
+					var dependencies = Object.keys(pkg.dependencies);
+					if (!this.production){
+						dependencies = dependencies.concat(Object.keys(pkg.devDependencies));
+					}
+					//Recurse
+					this._gatherPackages(dependencies, packages);
 				}
-				//Recurse
-				var recursePackages = this._gatherPackages(dependencies);
-				packages.found = packages.found.concat(recursePackages.found);
-				packages.missing = packages.missing.concat(recursePackages.missing);
 			} else {
-				packages.missing.push(packageName);
+				if (packages.missing.indexOf(pkg) == -1){
+					packages.missing.push(packageName);
+				}
 			}
 		}
 		return packages;
 	}
-	
+
 	_isArray(arr){
 		return arr && Object.prototype.toString.call(arr) === "[object Array]";
 	}

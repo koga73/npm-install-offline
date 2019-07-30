@@ -1,6 +1,6 @@
 {
   "name": "npm-install-offline",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Installs node_modules from an offline copy or local repository",
   "main": "npm-install-offline.js",
   "bin": {
