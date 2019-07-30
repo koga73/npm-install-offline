@@ -75,13 +75,19 @@ async function install(options){
 	npmInstallOffline.symlink = options.symlink;
 	npmInstallOffline.verbose = options.verbose;
 
-	options.repos.forEach((repo) => npmInstallOffline.addRepo(repo));
-	var packages = options.packageOrDirs.map((packageOrDir) => npmInstallOffline.resolvePackage(packageOrDir));
-	await npmInstallOffline.install(packages);
+	try {
+		options.repos.forEach((repo) => npmInstallOffline.addRepo(repo));
+		var packages = options.packageOrDirs.map((packageOrDir) => npmInstallOffline.resolvePackage(packageOrDir));
+		await npmInstallOffline.install(packages);
 
-	console.log("COMPLETE!");
-	console.log("");
-	console.warn("Note: There is a bug with npm (including v6.10.2) where if you run npm install it will uninstall packages not contained in package.json. This means if you use this tool to install local packages and then run npm install afterwards the local packages will get removed from your node_modules directory");
+		console.log("COMPLETE!");
+		console.log("");
+		console.warn("Note: There is a bug with npm (including v6.10.2) where if you run npm install it will uninstall packages not contained in package.json. This means if you use this tool to install local packages and then run npm install afterwards the local packages will get removed from your node_modules directory");
+	} catch (err){
+		console.error(err);
+		process.exit(1);
+	}
+	process.exit(0);
 }
 
 function showCommands(){
