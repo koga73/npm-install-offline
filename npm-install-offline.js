@@ -1,5 +1,5 @@
 /*
-* npm-install-offline v1.2.0 Copyright (c) 2019 AJ Savino
+* npm-install-offline v1.2.1 Copyright (c) 2019 AJ Savino
 * https://github.com/koga73/npm-install-offline
 * MIT LICENSE
 */
@@ -91,7 +91,7 @@ class NpmInstallOffline {
 		}
 
 		//Gather packages and filter duplicates
-		var pkgs = this._gatherPackages(packageNames);
+		var pkgs = await this._gatherPackages(packageNames);
 		pkgs.found = this._filterDuplicates(pkgs.found).sort((a, b) => a.name < b.name ? -1 : 1);
 		pkgs.missing = this._filterDuplicates(pkgs.missing).sort();
 		console.info("Packages needed for install found in local repos:", pkgs.found.reduce((str, pkg) => str + pkg.name + "\n", "\n"));
@@ -220,7 +220,7 @@ class NpmInstallOffline {
 	//Checks if packageNames are in cache and finds dependencies
 	//packageNames can be a string or array
 	//Returns an object containing the found and missing packages
-	_gatherPackages(packageNames, packages){
+	async _gatherPackages(packageNames, packages){
 		var pkgs = [];
 		if (this._isArray(packageNames)){
 			pkgs = packageNames;
@@ -238,21 +238,27 @@ class NpmInstallOffline {
 			var pkg = this.cache[packageName];
 			if (pkg){
 				if (packages.found.indexOf(pkg) == -1){
+					if (this.verbose){
+						console.log("Needs package from cache:", packageName);
+					}
 					packages.found.push(pkg);
 					var dependencies = Object.keys(pkg.dependencies);
 					if (!this.production){
 						dependencies = dependencies.concat(Object.keys(pkg.devDependencies));
 					}
 					//Recurse
-					this._gatherPackages(dependencies, packages);
+					await this._gatherPackages(dependencies, packages);
 				}
 			} else {
 				if (packages.missing.indexOf(pkg) == -1){
+					if (this.verbose){
+						console.log("Needs missing package:", packageName);
+					}
 					packages.missing.push(packageName);
 				}
 			}
 		}
-		return packages;
+		return Promise.resolve(packages);
 	}
 
 	_isArray(arr){
